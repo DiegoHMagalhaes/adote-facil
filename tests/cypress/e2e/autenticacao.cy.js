@@ -1,78 +1,88 @@
-/**
- * Testes para HistoriaU1: Cadastro de Usuário
- * Este bloco agrupa todos os testes relacionados à funcionalidade de cadastro de um novo usuário.
- */
+// Testes para a funcionalidade de Cadastro de Usuário
 describe('HistoriaU1: Cadastro de Usuário', () => {
 
-  // O beforeEach é executado antes de cada teste ('it') dentro deste 'describe'.
-  // Aqui, garantimos que cada teste comece na página de cadastro.
+  // Acessa a página de cadastro antes de cada teste
   beforeEach(() => {
     cy.visit('/cadastro');
   });
 
-  // Este é o caso de teste para o cenário principal e de sucesso.
   it('Cenário Principal: Deve permitir o cadastro com dados válidos', () => {
-    // Para evitar erros de "e-mail já cadastrado" em testes futuros,
-    // criamos um e-mail único usando a data e hora atual (timestamp).
+    // Gera um e-mail único para evitar conflitos durante a execução dos testes
     const emailUnico = `teste.${Date.now()}@exemplo.com`;
 
-    // Usamos cy.get() para selecionar os elementos do formulário pelo atributo 'name'
-    // e .type() para preencher cada campo com os dados necessários.
     cy.get('input[name="name"]').type('user');
     cy.get('input[name="email"]').type(emailUnico);
     cy.get('input[name="password"]').type('senha123');
     cy.get('input[name="confirmPassword"]').type('senha123');
-
-    // Selecionamos o botão de submissão e simulamos um clique.
     cy.get('button[type="submit"]').click();
 
-    // Esta é a verificação (assertion). Checamos se, após o cadastro,
-    // a URL do navegador inclui '/login', o que indica que fomos redirecionados com sucesso.
+    // Verifica se o usuário foi redirecionado para a página de login após o sucesso
     cy.url().should('include', '/login');
+  });
+
+  it('Cenário A1.1: Deve exibir erro ao tentar cadastrar com e-mail já existente', () => {
+    // Usa um e-mail que se assume já existir na base de dados
+    const emailJaExistente = 'usuario.existente@exemplo.com';
+
+    cy.get('input[name="name"]').type('Outro Usuario');
+    cy.get('input[name="email"]').type(emailJaExistente);
+    cy.get('input[name="password"]').type('senhaValida123');
+    cy.get('input[name="confirmPassword"]').type('senhaValida123');
+    cy.get('button[type="submit"]').click();
+
+    // Garante que o usuário permaneceu na página de cadastro
+    cy.url().should('not.include', '/login');
+
+    // **IMPORTANTE**: Adapte o seletor e o texto para a sua aplicação
+    cy.get('.error-message-geral')
+      .should('be.visible')
+      .and('contain', 'Este e-mail já está em uso.');
+  });
+
+  it('Cenário A1.2: Deve exibir erro quando as senhas informadas são diferentes', () => {
+    const emailUnico = `teste.senhas.${Date.now()}@exemplo.com`;
+
+    cy.get('input[name="name"]').type('user');
+    cy.get('input[name="email"]').type(emailUnico);
+    cy.get('input[name="password"]').type('senha123');
+    cy.get('input[name="confirmPassword"]').type('senha-diferente-456'); // Senha divergente
+    cy.get('button[type="submit"]').click();
+
+    // Garante que o usuário não foi redirecionado
+    cy.url().should('not.include', '/login');
+
+    // **IMPORTANTE**: Adapte o seletor e o texto para a sua aplicação
+    cy.get('.error-message-password')
+      .should('be.visible')
+      .and('contain', 'As senhas não coincidem.');
   });
 });
 
-/**
- * Testes para HistoriaU2: Autenticação de Usuário
- * Este bloco agrupa os testes para a funcionalidade de login.
- */
+// Testes para a funcionalidade de Autenticação de Usuário
 describe('HistoriaU2: Autenticação de Usuário', () => {
 
-  // Antes de cada teste de autenticação, navegamos para a página de login.
+  // Acessa a página de login antes de cada teste
   beforeEach(() => {
     cy.visit('/login');
   });
 
-  // Teste para o cenário de login bem-sucedido.
   it('Cenário Principal: Deve permitir o login com credenciais válidas', () => {
-    // Preenchemos o formulário com credenciais de um usuário que sabemos que existe.
     cy.get('input[name="email"]').type('usuario.existente@exemplo.com');
     cy.get('input[name="password"]').type('senha123');
-
-    // Clicamos no botão para logar.
     cy.get('button[type="submit"]').click();
 
-    // Verificamos se o usuário foi redirecionado para a área logada.
+    // Verifica se o login redirecionou para a página correta
     cy.url().should('include', '/area_logada/animais_disponiveis');
-
-    // Para ter mais certeza, verificamos também se o título principal (h1) da página
-    // contém o texto esperado e está visível, confirmando que a página correta carregou.
     cy.get('h1').contains('Animais disponíveis para adoção').should('be.visible');
   });
 
-  // Teste para o cenário alternativo (A1), onde o login falha.
   it('Cenário A1: Deve exibir erro com credenciais inválidas', () => {
-    // Preenchemos com um e-mail válido, mas uma senha incorreta de propósito.
     cy.get('input[name="email"]').type('usuario.existente@exemplo.com');
     cy.get('input[name="password"]').type('senhaErrada');
-
-    // Clicamos no botão para tentar logar.
     cy.get('button[type="submit"]').click();
 
-    // O comando cy.on('window:alert', ...) "escuta" por um evento de alerta do navegador.
-    // Quando um alerta aparece, ele captura o texto da mensagem.
+    // Verifica o texto de um alerta do navegador após a tentativa de login
     cy.on('window:alert', (text) => {
-      // Verificamos se o texto do alerta contém a mensagem de erro esperada.
       expect(text).to.contains('Erro ao logar');
     });
   });
